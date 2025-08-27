@@ -1,1 +1,1 @@
-# todo-planner
+# todo-planner-app
