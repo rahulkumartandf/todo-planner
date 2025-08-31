@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Todo Task Planner</title>
+  <title>Monthly Todo Planner</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -17,11 +17,11 @@
     }
     .container {
       background: #fff;
-      margin-top: 50px;
+      margin-top: 40px;
       padding: 20px;
       border-radius: 12px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 350px;
+      width: 420px;
     }
     h2 {
       margin-top: 0;
@@ -31,15 +31,17 @@
     .input-row {
       display: flex;
       margin-bottom: 15px;
+      gap: 8px;
     }
-    input {
-      flex: 1;
+    input, select {
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 8px;
     }
+    input {
+      flex: 1;
+    }
     button {
-      margin-left: 8px;
       padding: 10px 15px;
       background: #28a745;
       color: white;
@@ -50,10 +52,16 @@
     button:hover {
       background: #218838;
     }
+    h3 {
+      margin-top: 20px;
+      color: #444;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+    }
     ul {
       list-style: none;
       padding: 0;
-      margin: 0;
+      margin: 10px 0;
     }
     li {
       display: flex;
@@ -74,72 +82,109 @@
       font-size: 12px;
       border-radius: 6px;
     }
-    .complete-btn {
-      background: #007bff;
-    }
-    .delete-btn {
-      background: #dc3545;
-    }
+    .complete-btn { background: #007bff; }
+    .delete-btn { background: #dc3545; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Todo Task Planner</h2>
+    <h2>Monthly Todo Planner</h2>
     <div class="input-row">
       <input type="text" id="taskInput" placeholder="Enter a new task..."/>
+      <select id="monthSelect"></select>
       <button onclick="addTask()">Add</button>
     </div>
-    <ul id="taskList"></ul>
+    <div id="planner"></div>
   </div>
 
   <script>
     const taskInput = document.getElementById("taskInput");
-    const taskList = document.getElementById("taskList");
+    const monthSelect = document.getElementById("monthSelect");
+    const planner = document.getElementById("planner");
+
+    const months = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+
+    // Populate dropdown
+    months.forEach((m, i) => {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = m;
+      monthSelect.appendChild(option);
+    });
 
     // Load tasks from localStorage
-    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    renderTasks();
+    let tasksByMonth = JSON.parse(localStorage.getItem("tasksByMonth")) || {};
+    renderPlanner();
 
     function addTask() {
       const taskText = taskInput.value.trim();
+      const monthIndex = monthSelect.value;
+
       if (taskText === "") return;
-      tasks.push({ text: taskText, completed: false });
+
+      if (!tasksByMonth[monthIndex]) tasksByMonth[monthIndex] = [];
+      tasksByMonth[monthIndex].push({ text: taskText, completed: false });
+
       saveTasks();
-      renderTasks();
+      renderPlanner();
       taskInput.value = "";
     }
 
-    function toggleComplete(index) {
-      tasks[index].completed = !tasks[index].completed;
+    function toggleComplete(month, index) {
+      tasksByMonth[month][index].completed = !tasksByMonth[month][index].completed;
       saveTasks();
-      renderTasks();
+      renderPlanner();
     }
 
-    function deleteTask(index) {
-      tasks.splice(index, 1);
+    function deleteTask(month, index) {
+      tasksByMonth[month].splice(index, 1);
+      if (tasksByMonth[month].length === 0) delete tasksByMonth[month];
       saveTasks();
-      renderTasks();
+      renderPlanner();
     }
 
     function saveTasks() {
-      localStorage.setItem("tasks", JSON.stringify(tasks));
+      localStorage.setItem("tasksByMonth", JSON.stringify(tasksByMonth));
     }
 
-    function renderTasks() {
-      taskList.innerHTML = "";
-      tasks.forEach((task, index) => {
-        const li = document.createElement("li");
-        li.className = task.completed ? "completed" : "";
-        li.innerHTML = `
-          <span>${task.text}</span>
-          <div class="actions">
-            <button class="complete-btn" onclick="toggleComplete(${index})">${task.completed ? "Undo" : "Done"}</button>
-            <button class="delete-btn" onclick="deleteTask(${index})">Delete</button>
-          </div>
-        `;
-        taskList.appendChild(li);
+    function renderPlanner() {
+      planner.innerHTML = "";
+      if (Object.keys(tasksByMonth).length === 0) {
+        planner.innerHTML = "<p style='text-align:center; color:gray;'>No tasks yet!</p>";
+        return;
+      }
+
+      Object.keys(tasksByMonth).sort((a,b)=>a-b).forEach(monthIndex => {
+        const monthName = months[monthIndex];
+        const section = document.createElement("div");
+        section.innerHTML = `<h3>${monthName}</h3>`;
+        const ul = document.createElement("ul");
+
+        tasksByMonth[monthIndex].forEach((task, i) => {
+          const li = document.createElement("li");
+          li.className = task.completed ? "completed" : "";
+          li.innerHTML = `
+            <span>${task.text}</span>
+            <div class="actions">
+              <button class="complete-btn" onclick="toggleComplete(${monthIndex}, ${i})">${task.completed ? "Undo" : "Done"}</button>
+              <button class="delete-btn" onclick="deleteTask(${monthIndex}, ${i})">Delete</button>
+            </div>
+          `;
+          ul.appendChild(li);
+        });
+
+        section.appendChild(ul);
+        planner.appendChild(section);
       });
     }
+
+    // Add task on Enter
+    taskInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") addTask();
+    });
   </script>
 </body>
 </html>
